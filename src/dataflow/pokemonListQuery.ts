@@ -33,19 +33,19 @@ export type QueryResult = {
     }[];
   }[];
 };
-type QueryInput = {
+export type QueryInput = {
   offset: number;
   limit: number;
 };
 
-export const pokemonListWithQuery = selectorFamily<
+export const pokemonListQuery = selectorFamily<
   QueryResult,
   {
     limit: number;
     offset: number;
   }
 >({
-  key: "dataflow/pokemonListQuery/pokemonListWithOffset",
+  key: "dataflow/pokemonListQuery",
   get:
     ({ limit, offset }) =>
     async () => {

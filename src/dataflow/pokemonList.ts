@@ -6,15 +6,12 @@ import {
   useRecoilCallback,
   useRecoilValue,
 } from "recoil";
-import { pokemonListWithQuery, QueryResult } from "./pokemonListQuery";
+import {
+  formattedPokemonListQuery,
+  Pokemon,
+} from "./formattedPokemonListQuery";
 
 const pageSize = 50;
-
-type Pokemon = {
-  id: number;
-  en: string;
-  ja: string;
-};
 
 type PokemonListState = {
   pokemons: readonly Pokemon[];
@@ -38,13 +35,13 @@ const pokemonListRec = selectorFamily<
     ({ requestedItems, offset }) =>
     ({ get }): PokemonListState => {
       const limit = Math.min(requestedItems - offset, pageSize);
-      const page = get(
-        pokemonListWithQuery({
+      const pokemons = get(
+        formattedPokemonListQuery({
           limit,
           offset,
         })
       );
-      const pokemons = convertRawResultToPokemon(page);
+
       if (pokemons.length < limit) {
         return {
           pokemons,
@@ -105,7 +102,6 @@ export const usePaging = () => {
   const loadNextPage = useRecoilCallback(
     ({ set }) =>
       () => {
-        console.log("loadNextPage");
         set(totalItems, (count) => count + pageSize);
       },
     []
@@ -114,19 +110,3 @@ export const usePaging = () => {
     loadNextPage,
   };
 };
-
-function convertRawResultToPokemon(response: QueryResult): Pokemon[] {
-  return response.species.map((species) => {
-    const en =
-      species.pokemon_v2_pokemonspeciesnames.find((n) => n.language_id === 9)
-        ?.name ?? "";
-    const ja =
-      species.pokemon_v2_pokemonspeciesnames.find((n) => n.language_id === 11)
-        ?.name ?? "";
-    return {
-      id: species.id,
-      en,
-      ja,
-    };
-  });
-}
