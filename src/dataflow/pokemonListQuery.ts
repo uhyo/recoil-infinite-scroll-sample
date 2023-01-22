@@ -1,8 +1,9 @@
-import { Client, gql } from "@urql/core";
+import { Client, fetchExchange, gql } from "@urql/core";
 import { selectorFamily } from "recoil";
 
 const client = new Client({
   url: "https://beta.pokeapi.co/graphql/v1beta",
+  exchanges: [fetchExchange],
 });
 
 const query = gql<QueryResult, QueryInput>`
