@@ -2,7 +2,6 @@ import {
   atom,
   noWait,
   selector,
-  selectorFamily,
   useRecoilCallback,
   useRecoilValue,
 } from "recoil";
@@ -23,74 +22,47 @@ const totalItems = atom({
   default: pageSize,
 });
 
-const pokemonListRec = selectorFamily<
-  PokemonListState,
-  {
-    requestedItems: number;
-    offset: number;
-  }
->({
-  key: "dataflow/pokemonList/pokemonListRec",
-  get:
-    ({ requestedItems, offset }) =>
-    ({ get }): PokemonListState => {
+export const pokemonList = selector<PokemonListState>({
+  key: "dataflow/pokemonList",
+  get({ get }) {
+    const chunks: (readonly Pokemon[])[] = [];
+    const requestedItems = get(totalItems);
+    let mightHaveMore = true;
+    mainLoop: for (let offset = 0; offset < requestedItems; ) {
       const limit = Math.min(requestedItems - offset, pageSize);
       const pokemons = get(
-        formattedPokemonListQuery({
-          limit,
-          offset,
-        })
-      );
-
-      if (pokemons.length < limit) {
-        return {
-          pokemons,
-          mightHaveMore: false,
-        };
-      }
-      if (requestedItems === offset + limit) {
-        return {
-          pokemons,
-          mightHaveMore: true,
-        };
-      }
-      const rest = get(
         noWait(
-          pokemonListRec({
-            requestedItems,
-            offset: offset + limit,
+          formattedPokemonListQuery({
+            limit,
+            offset,
           })
         )
       );
-      switch (rest.state) {
+      switch (pokemons.state) {
         case "hasError": {
-          throw rest.errorMaybe();
+          throw pokemons.errorMaybe();
         }
         case "loading": {
           return {
-            pokemons,
+            pokemons: chunks.flat(1),
             mightHaveMore: true,
           };
         }
         case "hasValue": {
-          return {
-            pokemons: [...pokemons, ...rest.contents.pokemons],
-            mightHaveMore: rest.contents.mightHaveMore,
-          };
+          chunks.push(pokemons.contents);
+          offset += pokemons.contents.length;
+          if (pokemons.contents.length < limit) {
+            mightHaveMore = false;
+            break mainLoop;
+          }
+          break;
         }
       }
-    },
-});
-
-export const pokemonList = selector<PokemonListState>({
-  key: "dataflow/pokemonList",
-  get({ get }) {
-    return get(
-      pokemonListRec({
-        requestedItems: get(totalItems),
-        offset: 0,
-      })
-    );
+    }
+    return {
+      pokemons: chunks.flat(1),
+      mightHaveMore,
+    };
   },
 });
 
